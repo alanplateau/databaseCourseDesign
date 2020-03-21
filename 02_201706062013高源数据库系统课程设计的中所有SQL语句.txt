@@ -1,0 +1,497 @@
+------------创建数据库------------------------------
+create database gaoyuanMIS02
+on
+( name=gaoyuanMIS02,
+  filename='C:\Program Files\Microsoft SQL Server\MSSQL12.SQL2014\MSSQL\DATA\gaoyuanMIS02.mdf',
+  size=10,
+  maxsize=50,
+  filegrowth=5)
+
+  log on
+  (name=gaoyuanMIS02_log,
+   filename='C:\Program Files\Microsoft SQL Server\MSSQL12.SQL2014\MSSQL\DATA\gaoyuanMIS02_log.ldf',
+   size=5MB,
+   maxsize=25MB,
+   filegrowth=5MB)
+   go
+
+   use gaoyuanMIS02
+   go
+
+   ------------------建表--------------------------------------------
+   ---------------------------------------------------------------------------
+create table gaoy_StudentInform02 --学生信息表
+( gy_Sno02 char(20) primary key,--学号
+    gy_Sname02 char(20),--姓名
+	gy_Ssex02 char(2),--性别
+	gy_Sage02 int check(gy_Sage02>0  and gy_Sage02<120),--年龄
+	gy_Shometown02 char(100) ,--生源所属地
+	gy_Scredit02 float check(gy_Scredit02>=0)--生源所属地 
+	)
+
+create table gaoy_Area02  --对生源所属地按地区进行分类
+( gy_Shometown02 char(100) primary key,--生源所属地
+gy_Area02 char(40),  ---地区
+)
+
+alter table gaoy_StudentInform02  ---为StudentInform表的生源地添加外键约束
+add constraint Student_Area foreign key(gy_Shometown02)
+references gaoy_Area02
+
+create table gaoy_Major02  --专业表
+( gy_Mno02 char(20) primary key,--专业编号
+	gy_Mname02 char(40),---专业名称
+	)
+		  
+create table gaoy_Class_Student02 --学生所属班级专业
+( gy_Mno02 char(20) foreign key references gaoy_Major02,--专业编号
+	gy_CLno02 char(10) ,--班级编号如01，05，06班
+	gy_Sno02  char(20) primary key foreign key references gaoy_StudentInform02, --学号
+	gy_Cyear02 int
+	)
+
+	alter table gaoy_Class_Student02
+	drop constraint FK__gaoy_Clas__gy_Cn__24927208
+	alter table gaoy_Class_Student02
+    add constraint FK_Clas_Stu foreign key(gy_Sno02) 
+	references gaoy_StudentInform02(gy_Sno02) on delete cascade
+
+	
+
+
+create table gaoy_Courses02 --课程信息表
+( gy_Cno02 char(20) primary key,--课程编号
+gy_Cname02 char(40), --课程名
+gy_CreditHours02 FLOAT,--学时
+gy_CheckMode02 char(4) 
+check ( gy_CheckMode02 in('考试','考查')),--定义考核方式为考试或考查
+gy_Ccredit02 float check(gy_Ccredit02>=0)--学分
+)
+
+alter table gaoy_StudentInform02  --为学生表添加性别约束
+add constraint EnsureSex check(gy_Ssex02 in('男','女'))
+
+Create table gaoy_Teacher02 --教师表
+( gy_Tno02 char(20) primary key,---教师编号
+gy_Tname02 char(20) not null,---名字
+gy_Tsex02 char(2) check(gy_Tsex02 in('男','女')),---性别
+gy_Tage02 int check(gy_Tage02>0 and gy_Tage02<120),---年龄
+gy_Ttitle02 char(20) 
+check(gy_Ttitle02 in('助教','讲师','副教授','教授')),--职称
+gy_Ttelephone02 char(20)---电话
+)
+
+create table gaoy_TeachSchedule02 ---授课表，按班级开课
+( gy_Cno02 char(20)references gaoy_Courses02 ,---课程编号
+gy_Tno02 char(20) references gaoy_Teacher02,--教师编号
+gy_Year02 int,--学年
+gy_Term02 int check(gy_Term02 in(1,2)),---学期
+gy_Mno02  char(20) references gaoy_Major02 ,--专业编号
+gy_CLno02 char(10) ,--班级编号
+gy_Cyear02 int---如2017级
+constraint all_Property primary key(gy_Cno02,gy_Tno02,
+gy_Year02,gy_Term02,gy_Mno02,gy_CLno02,gy_Cyear02)--全键作为主键
+)
+
+
+
+create table gaoy_Grades02
+( gy_Sno02 char(20) references gaoy_StudentInform02,--学号
+	gy_Year02 int ,--学年
+	gy_Term02 int check(gy_Term02 in(1,2)),---学期
+	gy_Cno02 char(20) references gaoy_Courses02,--课程编号
+	gy_Tno02 char(20) references gaoy_Teacher02,
+	gy_Grade02 float check(gy_Grade02>=0 and gy_Grade02<=100)
+	)
+
+	alter table gaoy_Grades02
+	drop constraint FK__gaoy_Grad__gy_Sn__34C8D9D1
+
+	alter table gaoy_Grades02
+	add constraint FK_Grade_Stu foreign key(gy_Sno02)
+	 references gaoy_StudentInform02(gy_Sno02) on delete cascade
+
+	create table gaoy_LoginStudent02
+	( gy_Sno02 char(20) primary key ,--学生学号即为用户名
+	  gy_Spassword char(20),---密码默认为学生学号
+	  constraint studetLogin foreign key(gy_Sno02) references gaoy_StudentInform02
+	  )
+	  alter table gaoy_LoginStudent02 
+	  drop constraint studetLogin
+	  alter table gaoy_LoginStudent02
+	  add constraint StuLogin foreign key(gy_Sno02) 
+	  references gaoy_StudentInform02 on delete cascade
+
+	  create table gaoy_LoginTeacher02
+	  ( gy_Tno02 char(20) primary key,--登录名为教师工号
+	    gy_Tpassword char(20),--默认密码为教师工号
+		constraint teacherLogin foreign key(gy_Tno02) references gaoy_Teacher02
+		)
+		alter table gaoy_LoginTeacher02
+		drop constraint teacherLogin
+		alter table gaoy_LoginTeacher02
+		add constraint teacherLogin foreign key(gy_Tno02)
+		 references gaoy_Teacher02 on delete cascade	
+
+
+    -------------------创建视图--------------------------------------
+	-----------------------------------------------------------------
+
+	create view gaoy_Student_Credit02 as --创建学生课程学分视图(去掉成绩60分以下的）
+	select gy_Sno02,gaoy_Courses02.gy_Cno02,gy_Year02,gy_Term02,gy_Tno02,gy_Ccredit02
+	from gaoy_Grades02,gaoy_Courses02
+	where gaoy_Courses02.gy_Cno02=gaoy_Grades02.gy_Cno02	
+	and gy_Grade02>=60
+	with check option
+
+	create view avgGrade_view(gy_Year02,gy_Term02,gy_Cno02,
+	gy_Tno02,avgGrade)--构建显示课程编号，教师编号，学期，课程平均成绩的视图
+	as
+	select gy_Year02,gy_Term02,gy_Cno02,
+	gy_Tno02,AVG(gy_Grade02) avgGrade
+	from gaoy_Grades02
+	group by gy_Year02,gy_Term02,gy_Cno02,gy_Tno02
+	go
+
+	select * from avgGrade_view
+
+
+	create view gradeSearch_view ---查询成绩时的显示视图
+	as   ---学号，学年学期，课程名，教师名，成绩，学分，该门课程平均成绩
+	select gy_Sno02,gaoy_Grades02.gy_Year02,gaoy_Grades02.gy_Term02,
+	gy_Cname02,gy_Tname02,gy_Grade02,gy_Ccredit02,avgGrade  
+	from gaoy_Grades02,avgGrade_view,gaoy_Teacher02,gaoy_Courses02
+	where gaoy_Grades02.gy_Cno02=avgGrade_view.gy_Cno02
+	and   gaoy_Grades02.gy_Tno02=avgGrade_view.gy_Tno02
+	and   gaoy_Grades02.gy_Year02=avgGrade_view.gy_Year02
+	and   gaoy_Grades02.gy_Term02=avgGrade_view.gy_Term02
+	and   gaoy_Courses02.gy_Cno02=gaoy_Grades02.gy_Cno02
+	and   gaoy_Teacher02.gy_Tno02=gaoy_Grades02.gy_Tno02
+	select * from gradeSearch_view
+
+	create view ClassCourse_view ----班级课程表视图
+	as 
+	select gaoy_TeachSchedule02.gy_Mno02,gy_Cyear02,gy_CLno02,gy_Cname02,gy_Tname02,gy_Year02,
+	gy_Term02,gy_Ccredit02,gaoy_Courses02.gy_Cno02,gy_Mname02,gaoy_TeachSchedule02.gy_Tno02
+	from gaoy_TeachSchedule02,gaoy_Courses02,gaoy_Teacher02,gaoy_Major02
+	where  gaoy_TeachSchedule02.gy_Tno02=gaoy_Teacher02.gy_Tno02
+	and    gaoy_TeachSchedule02.gy_Cno02=gaoy_Courses02.gy_Cno02
+	and    gaoy_TeachSchedule02.gy_Mno02=gaoy_Major02.gy_Mno02
+
+	go
+
+	create view grades_Sname_view ----带有名字的成绩视图
+	as
+	select gaoy_Grades02.gy_Sno02,gy_Sname02,gy_Year02,gy_Term02,gy_Cno02,gy_Tno02,gy_Grade02
+	from gaoy_Grades02,gaoy_StudentInform02
+	where gaoy_Grades02.gy_Sno02=gaoy_StudentInform02.gy_Sno02
+
+	create 
+	
+
+	--------------------------创建触发器----------------------------------
+	------------------------------------------------------------------
+
+	--创建触发器，当插入成绩时，会自动将学分添加到学生信息表中
+	create trigger Ins_Upd_Grade on gaoy_Grades02
+	for insert,update
+	as 
+	declare @SnoTemp char(20),---学号
+			@GradeTemp float--成绩
+	select @SnoTemp=gy_Sno02,@GradeTemp=gy_Grade02
+	from inserted
+	begin
+	update gaoy_StudentInform02
+	set gy_Scredit02=(
+	select SUM(gy_Ccredit02)
+	from gaoy_Student_Credit02
+	where gy_Sno02=@SnoTemp
+	)     ---视图gaoy_StudentInform中保存了所有学生的有效学分（成绩大于60）
+	where gy_Sno02=@SnoTemp
+	end
+	go
+
+	---创建触发器，当插入学生信息到学生信息表中时，自动将用户名和密码插入登录表
+	create trigger Ins_Login_Student
+	on gaoy_StudentInform02
+	for insert
+	as
+	declare @tempStudent char(20)
+	select @tempStudent=gy_Sno02
+	from inserted
+	begin
+	insert into gaoy_LoginStudent02
+	values(@tempStudent,@tempStudent)
+	end
+
+	go
+
+
+	---创建触发器，当插入学生信息到学生信息表中时，自动将用户名和密码插入登录表
+	create trigger Ins_LoginTeacher
+	on gaoy_Teacher02
+	for insert
+	as
+	declare @tempTeacher char(20)
+	select @tempTeacher=gy_Tno02
+	from inserted
+	begin
+	insert into gaoy_LoginTeacher02
+	values(@tempTeacher,@tempTeacher)
+	end
+	
+	create index COURSE on gaoy_Courses02(gy_Cno02)
+	create index TEACHER on gaoy_Teacher02(gy_Tno02)
+	create index  STUDENT on gaoy_StudentInform02(gy_Sno02)
+
+
+	-------------------创建存储过程------------------------------------
+	---------------------------------------------------------------------
+	Create procedure  Insert_Stu
+	        @Sno char(20),
+	        @Sname char(20),
+			@Ssex char(2),
+			@Sage int,
+			@Hometown char(20),
+			@Credit float
+	as
+	begin
+	insert  gaoy_StudentInform02
+	values(@Sno,@Sname,@Ssex,@Sage,@Hometown,@Credit)
+	end
+
+	create procedure delete_Stu
+	       @Sno2  char(20)
+	as
+	begin
+	delete from gaoy_StudentInform02
+	where gy_Sno02=@Sno2
+	END
+
+	------------------------------插入数据-----------------------------
+	----------------------------------------------------------------------
+
+
+				 
+	insert into gaoy_Area02
+	values('浙江省台州市','浙江省')
+
+	insert into gaoy_Area02
+	values('广西省柳州市','广西省')
+
+	insert into gaoy_StudentInform02
+	values('201706062001','RuBy','女',20,'浙江省台州市',0)
+
+	insert into gaoy_StudentInform02
+	values('201706062002','Yang','女',21,'广西省柳州市',0)
+
+	select * from gaoy_StudentInform02
+
+	insert into gaoy_Courses02
+	values('0606001','WEB应用开发',48,'考试',3)
+
+	select *from gaoy_Courses02
+
+	insert into gaoy_Teacher02
+	values('00001','陆佳炜','男',35,'教授','13758521234')
+
+	select *from gaoy_Teacher02
+
+	insert into gaoy_Major02
+	values('0605001','计算机专业科学与技术')
+
+	select* from gaoy_Major02
+
+	insert into gaoy_Class_Student02
+	values('0605001','1701','201706062001')
+
+	insert into gaoy_Class_Student02
+	values('0605001','1701','201706062002')
+	select *from gaoy_Class_Student02
+
+	insert into gaoy_TeachSchedule02
+	values('0606001','00001',2018,1,'0605001','1701')
+	select *from gaoy_TeachSchedule02
+	go
+
+	
+
+	insert into gaoy_Grades02
+	values('201706062001',2018,1,'0606001','00001',89)
+
+	select *from gaoy_StudentInform02
+	select *from gaoy_Grades02
+
+	insert into gaoy_Grades02
+	values('201706062002',2018,1,'0606001','00001',59)
+
+	select *from gaoy_StudentInform02
+	select *from gaoy_Grades02
+
+	insert into gaoy_Courses02
+	values('0606002','数据库原理及其应用',48,'考试',4)
+
+	insert into gaoy_Teacher02
+	values('00002','陆亿红','女',28,'教授','663589')
+
+	insert into gaoy_TeachSchedule02
+	values('0606002','00002',2018,1,'0605001','1701')
+	select * from gaoy_Courses02
+	select * from gaoy_Teacher02
+	select * from gaoy_TeachSchedule02
+
+	insert into gaoy_Grades02
+	values('201706062001',2018,1,'0606002','00002',75)
+	select *from gaoy_StudentInform02
+	select *from gaoy_Grades02
+
+	/*insert into gaoy_Grades02
+	values('201706062001',2018,1,'0606002','00002',75)
+	select *from gaoy_StudentInform02
+	select *from gaoy_Grades02*/
+
+	go
+
+	update gaoy_Grades02
+	set gy_Grade02=45
+	where gy_Sno02='201706062002'AND gy_Cno02='0606002'
+	select *from gaoy_StudentInform02
+	select *from gaoy_Grades02
+
+	insert into gaoy_Grades02
+	values('201706062002',2018,1,'0606002','00002',89)
+
+	select *
+	from gaoy_Student_Credit02
+
+	insert into gaoy_LoginStudent02
+	values('201706062001','201706062001')
+	insert into gaoy_LoginStudent02
+	values('201706062002','201706062002')
+
+	select *from gaoy_Teacher02
+
+	insert into gaoy_LoginTeacher02
+	values('00001','00001')
+	insert into gaoy_LoginTeacher02
+	values('00002','00002')
+
+	insert into gaoy_StudentInform02
+	values('201706062003','donna','女',20,'浙江省台州市',0)
+
+	select *from gaoy_LoginStudent02
+	go
+
+	select ClassCourse_view.gy_Mno02,ClassCourse_view.gy_Cyear02,ClassCourse_view.gy_CLno02,gy_Cname02,
+	gy_Tname02,gy_Year02,gy_Term02,gy_Ccredit02 
+	from ClassCourse_view,gaoy_Class_Student02
+	where gy_Sno02='201706062001'
+	and   ClassCourse_view.gy_Mno02=gaoy_Class_Student02.gy_Mno02
+	and   ClassCourse_view.gy_Cyear02=gaoy_Class_Student02.gy_Cyear02  
+	and   ClassCourse_view.gy_CLno02=gaoy_Class_Student02.gy_CLno02
+
+	select *from ClassCourse_view
+	
+	select *from ClassCourse_view
+	 where gy_Mno02='0605001'
+	 and gy_Cyear02=2017
+	 and gy_CLno02='01'
+
+	select * from gaoy_Grades02
+	select * from gaoy_LoginStudent02
+
+	select * from gaoy_StudentInform02
+
+	insert into gaoy_Major02 values('0605002','软件工程');
+	insert into gaoy_Major02 values('0605003','数字媒体');
+	select *from gaoy_Major02
+
+	select * from gaoy_Class_Student02
+
+	insert into gaoy_Area02 values('浙江省杭州市','浙江省')
+	insert into gaoy_Area02 values('浙江省温州市','浙江省')
+	insert into gaoy_Area02 values('江苏省苏州市','江苏省')
+	insert into gaoy_Area02 values('广东省广州市','广东省')
+	select * from gaoy_Area02
+
+	select *from gaoy_Class_Student02
+	select * from gaoy_StudentInform02
+
+	select *from gaoy_TeachSchedule02
+	insert into gaoy_TeachSchedule02
+	values('0606003','00003',2018,1,'0605001','01',2017)
+	insert into gaoy_TeachSchedule02
+	values('0606004','00004',2018,1,'0605001','01',2017)
+
+	insert into gaoy_TeachSchedule02
+	values('0606001','00001',2018,1,'0605001','01',2016)
+	insert into gaoy_TeachSchedule02
+	values('0606002','00002',2018,1,'0605001','01',2016)
+	insert into gaoy_TeachSchedule02
+	values('0606003','00003',2018,1,'0605001','01',2016)
+	insert into gaoy_TeachSchedule02
+	values('0606004','00004',2018,1,'0605001','01',2016)
+
+	insert into gaoy_TeachSchedule02
+	values('0606001','00001',2018,1,'0605001','01',2015)
+	insert into gaoy_TeachSchedule02
+	values('0606002','00002',2018,1,'0605001','01',2015)
+	insert into gaoy_TeachSchedule02
+	values('0606003','00003',2018,1,'0605001','01',2015)
+	insert into gaoy_TeachSchedule02
+	values('0606004','00004',2018,1,'0605001','01',2015)
+
+	insert into gaoy_TeachSchedule02
+	values('0606003','00003',2018,1,'0605002','01',2015)
+	insert into gaoy_TeachSchedule02
+	values('0606004','00004',2018,1,'0605002','01',2015)
+	insert into gaoy_TeachSchedule02
+	values('0606005','00005',2018,1,'0605002','01',2015)
+	insert into gaoy_TeachSchedule02
+	values('0606006','00006',2018,1,'0605002','01',2015)
+
+	insert into gaoy_TeachSchedule02
+	values('0606003','00003',2018,1,'0605002','01',2016)
+	insert into gaoy_TeachSchedule02
+	values('0606004','00004',2018,1,'0605002','01',2016)
+	insert into gaoy_TeachSchedule02
+	values('0606005','00005',2018,1,'0605002','01',2016)
+	insert into gaoy_TeachSchedule02
+	values('0606006','00006',2018,1,'0605002','01',2016)
+
+	insert into gaoy_TeachSchedule02
+	values('0606003','00003',2018,1,'0605002','01',2017)
+	insert into gaoy_TeachSchedule02
+	values('0606004','00004',2018,1,'0605002','01',2017)
+	insert into gaoy_TeachSchedule02
+	values('0606005','00005',2018,1,'0605002','01',2017)
+	insert into gaoy_TeachSchedule02
+	values('0606006','00006',2018,1,'0605002','01',2017)
+
+
+
+
+
+	
+		
+	
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+			   
+			   
+
+
+
